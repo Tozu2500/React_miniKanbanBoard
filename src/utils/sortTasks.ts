@@ -33,6 +33,8 @@ export function sortTasks(tasks: readonly Task[], mode: SortMode): Task[] {
     return [...tasks].sort(COMPARATORS[mode]);
 }
 
-export function isSortMode(value: string): value is SortMode {
-    return value in SORT_LABELS;
+// Own-property check: a plain `in` would also accept inherited names such as
+// 'toString' or 'constructor'.
+export function isSortMode(value: unknown): value is SortMode {
+    return typeof value === 'string' && Object.prototype.hasOwnProperty.call(SORT_LABELS, value);
 }

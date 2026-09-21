@@ -1,10 +1,11 @@
 // One task. Owns its own "is someone editing me -state", and acts as the drag
 // source for moving between columns.
-import { memo, useState } from "react";
+import { memo, useRef, useState } from "react";
 import type { DragEvent, KeyboardEvent } from "react";
 import type { Status, Task } from "../types";
 import { STATUS_LABELS, STATUS_ORDER } from "../types";
 import { useTasksDispatch } from "../context/TasksContext";
+import { todayIsoDate } from "../utils/dates";
 
 interface TaskCardProps {
     task: Task;
@@ -22,8 +23,8 @@ function previousStatus(status: Status): Status | null {
 }
 
 function describeDueDate(dueDate: string): { label: string; overdue: boolean } {
-    const today = new Date().toISOString().slice(0, 10);
-    return { label: dueDate, overdue: dueDate < today };
+    // Both sides are local `YYYY-MM-DD` strings, so a plain string compare works
+    return { label: dueDate, overdue: dueDate < todayIsoDate() };
 }
 
 function TaskCardImpl({ task }: TaskCardProps) {
@@ -34,7 +35,23 @@ function TaskCardImpl({ task }: TaskCardProps) {
     const [isEditing, setIsEditing] = useState(false);
     const [draft, setDraft] = useState(task.title);
 
+    // Escape unmounts the focused input, and some browsers (Chrome) fire `blur`
+    // on removal. That blur would run `commitEdit` with the draft the user just
+    // cancelled, so cancel raises this flag first and commit checks it. A ref,
+    // not state: it must be visible synchronously, before the next render.
+    const cancelledRef = useRef(false);
+
+    // Seeded from the task each time, so a cleared or untrimmed draft from a
+    // previous edit does not leak into the next one
+    function startEdit() {
+        cancelledRef.current = false;
+        setDraft(task.title);
+        setIsEditing(true);
+    }
+
     function commitEdit() {
+        if (cancelledRef.current) return;
+
         const trimmed = draft.trim();
         if (trimmed !== '' && trimmed !== task.title) {
             dispatch({ type: 'task/renamed', id: task.id, title: trimmed });
@@ -43,6 +60,7 @@ function TaskCardImpl({ task }: TaskCardProps) {
     }
 
     function cancelEdit() {
+        cancelledRef.current = true;
         setDraft(task.title);
         setIsEditing(false);
     }
@@ -83,7 +101,7 @@ function TaskCardImpl({ task }: TaskCardProps) {
                 <button
                     className="card__title"
                     type="button"
-                    onClick={() => setIsEditing(true)}
+                    onClick={startEdit}
                     title="Click to rename"
                 >
                     {task.title}

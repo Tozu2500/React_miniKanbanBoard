@@ -1,5 +1,5 @@
 // One status column and the drop target for DRAG&DROP
-import { useState } from "react";
+import { useRef, useState } from "react";
 import type { DragEvent } from "react";
 import type { Status, Task } from "../types";
 import { STATUS_LABELS } from "../types";
@@ -15,15 +15,31 @@ export function Column({ status, tasks }: ColumnProps) {
     const dispatch = useTasksDispatch();
     const [isDragOver, setIsDragOver] = useState(false);
 
+    // `dragleave` fires every time the pointer crosses from the column onto
+    // one of its cards, so a plain boolean flickers. Counting enters against
+    // leaves means the highlight only drops when the pointer really left.
+    const dragDepth = useRef(0);
+
+    function handleDragEnter(event: DragEvent<HTMLElement>) {
+        event.preventDefault();
+        dragDepth.current += 1;
+        setIsDragOver(true);
+    }
+
+    function handleDragLeave() {
+        dragDepth.current = Math.max(0, dragDepth.current - 1);
+        if (dragDepth.current === 0) setIsDragOver(false);
+    }
+
     // Preventing default is what allow the DROP after drag, otherwise browser rejects
     function handleDragOver(event: DragEvent<HTMLElement>) {
         event.preventDefault();
         event.dataTransfer.dropEffect = 'move';
-        setIsDragOver(true);
     }
 
     function handleDrop(event: DragEvent<HTMLElement>) {
         event.preventDefault();
+        dragDepth.current = 0;
         setIsDragOver(false);
 
         const id = event.dataTransfer.getData('text/plain');
@@ -33,8 +49,9 @@ export function Column({ status, tasks }: ColumnProps) {
     return (
         <section
             className={`column ${isDragOver ? 'column--dragover' : ''}`}
+            onDragEnter={handleDragEnter}
             onDragOver={handleDragOver}
-            onDragLeave={() => setIsDragOver(false)}
+            onDragLeave={handleDragLeave}
             onDrop={handleDrop}
             aria-label={STATUS_LABELS[status]}
         >

@@ -3,6 +3,7 @@
 import { useRef, useState } from "react";
 import type { FormEvent } from "react";
 import { useTasksDispatch } from "../context/TasksContext";
+import { newId } from "../utils/ids";
 
 export function AddTaskForm() {
     const dispatch = useTasksDispatch();
@@ -24,7 +25,7 @@ export function AddTaskForm() {
         dispatch({
             type: 'task/added',
             // Impure values are created here so the reducer stays pure
-            id: crypto.randomUUID(),
+            id: newId(),
             createdAt: Date.now(),
             title: trimmed,
             dueDate: dueDate || undefined,

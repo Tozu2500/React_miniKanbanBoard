@@ -9,9 +9,9 @@ import { Toolbar } from './components/Toolbar';
 import { TasksProvider, useTasks } from './context/TasksContext';
 import { useDebouncedValue } from './hooks/useDebouncedValue';
 import { useLocalStorage } from './hooks/useLocalStorage';
-import { filterTasks } from './utils/filterTasks';
+import { filterTasks, isStatusFilter } from './utils/filterTasks';
 import type { StatusFilter } from './utils/filterTasks';
-import { sortTasks } from './utils/sortTasks';
+import { isSortMode, sortTasks } from './utils/sortTasks';
 import type { SortMode } from './utils/sortTasks';
 
 /**
@@ -22,8 +22,9 @@ function BoardScreen() {
     const tasks = useTasks();
 
     const [search, setSearch] = useState('');
-    const [status, setStatus] = useLocalStorage<StatusFilter>('react-task-board:status', 'all');
-    const [sort, setSort] = useLocalStorage<SortMode>('react-task-board:sort', 'created-desc');
+    // The guards keep a stale stored value from becoming an impossible state
+    const [status, setStatus] = useLocalStorage<StatusFilter>('react-task-board:status', 'all', isStatusFilter);
+    const [sort, setSort] = useLocalStorage<SortMode>('react-task-board:sort', 'created-desc', isSortMode);
 
     // The input stays instant; filtering waits for a pause in typing.
     const debouncedSearch = useDebouncedValue(search, 200);
